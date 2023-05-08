@@ -1,318 +1,211 @@
 # error code
-ERR_BALANCER_STOP=201
-ERR_CHGVXNET_PRECHECK=202
-ERR_SCALEIN_SHARD_FORBIDDEN=203
-ERR_SERVICE_STOPPED=204
-ERR_PORT_NOT_LISTENED=205
-ERR_NOTVALID_SHARD_RESTORE=206
-ERR_INVALID_PARAMS_MONGOCMD=207
-ERR_REPL_NOT_HEALTH=208
-ERR_DELETE_NODES_NUM_SHOULD_BE_EVEN=209
-ERR_PRIMARY_DELETE_NOT_ALLOWED=210
-ERR_HIDDEN_DELETE_NOT_ALLOWED=211
-ERR_UPGRADE_MODE_START=212
-ERR_UPGRADE_SYS_PASSWORD=213
-ERR_UPGRADE_NET_PORT=214
-ERR_UPGRADE_MODE_STOP=215
-ERR_UPGRADE_DISK_SPACE=216
-ERR_HEALTH_CHECK=217
+ERR_PORT_NOT_LISTEN=500
+ERR_PROCESS_NOT_EXIST=501
 
 # path info
-MONGODB_DATA_PATH=/data/mongodb-data
-MONGODB_LOG_PATH=/data/mongodb-logs
-MONGODB_CONF_PATH=/data/mongodb-conf
-MONGOD_BIN=/opt/mongodb/current/bin/mongod
-DB_QC_LOCAL_PASS_FILE=/data/appctl/data/qc_local_pass
-HOSTS_INFO_FILE=/data/appctl/data/hosts.info
-CONF_INFO_FILE=/data/appctl/data/conf.info
-NODE_FIRST_CREATE_FLAG_FILE=/data/appctl/data/node.first.create.flag
 REPL_MONITOR_ITEM_FILE=/opt/app/current/bin/node/repl.monitor
-HEALTH_CHECK_FLAG_FILE=/data/appctl/data/health.check.flag
-BACKUP_FLAG_FILE=/data/appctl/data/backup.flag
-MONGOSHAKE_FLAG_FILE=/data/appctl/data/mongoshake.flag
+IGNORE_HEALTH_CHECK_FLAG_FILE=/data/appctl/data/ignore_health.check.flag
+MONGOSHAKE_CONF=/opt/app/current/conf/mongoshake/mongoshake.conf
+BEING_HEALTH_CHECKED_FLAG=/data/appctl/data/being_health_checked.flag
+BEING_REVIVED_FLAG=/data/appctl/data/being_revived.flag
+MONITOR_DIR=/opt/mongo-shake/metrics
+MONITOR_ITEM_EXECUTOR=/opt/mongo-shake/metrics/executor.metrics
+MONITOR_ITEM_PERSIST=/opt/mongo-shake/metrics/persist.metrics
+MONITOR_ITEM_QUEUE=/opt/mongo-shake/metrics/queue.metrics
+MONITOR_ITEM_REPL=/opt/mongo-shake/metrics/repl.metrics
+MONITOR_ITEM_SENTINEL=/opt/mongo-shake/metrics/sentinel.metrics
+MONITOR_ITEM_SENTINEL_OPTIONS=/opt/mongo-shake/metrics/sentinel_options.metrics
+MONITOR_ITEM_WORKER=/opt/mongo-shake/metrics/worker.metrics
+MONITOR_ITEM_PROGRESS=/opt/mongo-shake/metrics/progress.metrics
+MONITOR_ITEM_TMP=/opt/mongo-shake/metrics/tmp.metrics
+MONITOR_TEMPLATE=/opt/app/current/bin/node/item.monitor
 
-ZABBIX_LOG_PATH=/data/zabbix-logs
-CADDY_LOG_PATH=/data/caddy-logs
 
-# runMongoCmd
-# desc run mongo shell
-# $1: script string
-# $2-x: option
-# -u username, -p passwd
-# -P port, -H ip
-runMongoCmd() {
-  local cmd="/opt/mongodb/current/bin/mongo --quiet"
-  local jsstr="$1"
-  
-  shift
-  if [ $(($# % 2)) -ne 0 ]; then log "Invalid runMongoCmd params"; return $ERR_INVALID_PARAMS_MONGOCMD; fi
-  while [ $# -gt 0 ]; do
-    case $1 in
-      "-u") cmd="$cmd --authenticationDatabase admin --username $2";;
-      "-p") cmd="$cmd --password $2";;
-      "-P") cmd="$cmd --port $2";;
-      "-H") cmd="$cmd --host $2";;
-    esac
-    shift 2
-  done
-
-  timeout --preserve-status 5 $cmd --eval "$jsstr"
+start(){
+    log ">>>>> start <<<<<"
+    systemctl start mongoshake.service
 }
 
-shellStartMongodForAdmin() {
-  runuser mongod -g svc -s "/bin/bash" -c "$MONGOD_BIN -f $MONGODB_CONF_PATH/mongo-admin.conf --setParameter disableLogicalSessionCacheRefresh=true"
+stop(){
+    log ">>>>> stop <<<<<"
+    systemctl stop mongoshake.service
 }
 
-shellStopMongodForAdmin() {
-  runuser mongod -g svc -s "/bin/bash" -c "$MONGOD_BIN -f $MONGODB_CONF_PATH/mongo-admin.conf --shutdown"
+reload(){
+    log ">>>>> reload <<<<<"
+    systemctl restart mongoshake.service
 }
 
-# getSid
-# desc: get sid from NODE_LIST item
-# $1: a NODE_LIST item (5/192.168.1.2)
-# output: sid
-getSid() {
-  echo $(echo $1 | cut -d'/' -f1)
+monitor(){
+    log ">>>>> monitor <<<<<"
+    if [ ! -d $MONITOR_DIR ];then
+        mkdir -p $MONITOR_DIR 
+    fi
+    local res
+    local group
+    local title
+    local value
+    
+    local incr_port=$(getItemFromFile incr_sync.http_port $MONGOSHAKE_CONF)
+    local full_port=$(getItemFromFile full_sync.http_port $MONGOSHAKE_CONF)
+    initIncrFile
+    initFullFile
+
+    if [ ! -z "$(getPidByNetstat $incr_port)" ]; then 
+        getMonitorItem $incr_port $MONITOR_ITEM_EXECUTOR "executor"
+        getMonitorItem $incr_port $MONITOR_ITEM_REPL "repl"
+    fi
+
+    if [ ! -z "$(getPidByNetstat $full_port)" ]; then 
+        getMonitorItem $full_port $MONITOR_ITEM_PROGRESS "progress"
+    fi
+
+    while read line; do
+        group=$(echo $line | cut -d'/' -f1)
+        title=$(echo $line | cut -d'/' -f2)
+        pipestr=$(echo $line | cut -d'/' -f3)
+        if [ "$group" = "repl" ]; then
+            value=$(cat $MONITOR_ITEM_REPL | jq "$pipestr")
+        fi
+
+        if [ "$group" = "progress" ]; then
+            value=$(cat $MONITOR_ITEM_PROGRESS | jq "$pipestr")
+            if [ "$title" = "progress" ]; then
+                # convert string to int
+                value=$(echo ${value:1:-5})
+            fi
+        fi
+
+        if [ "$group" = "executor" ]; then
+            cat $MONITOR_ITEM_EXECUTOR | jq "$pipestr" > $MONITOR_ITEM_TMP
+            value=$(echo $(echo -n `cat $MONITOR_ITEM_TMP` | tr ' ' '+') | bc)
+        fi
+        res="$res,\"$title\":$value"
+        done < $MONITOR_TEMPLATE
+    echo "{${res:1}}"
 }
 
-getIp() {
-  echo $(echo $1 | cut -d'/' -f2)
+getMonitorItem(){
+    curl 127.0.0.1:$1/$3 > $2
 }
 
-getNodeId() {
-  echo $(echo $1 | cut -d'/' -f3)
+initIncrFile(){
+    cat > $MONITOR_ITEM_EXECUTOR <<end 
+[{
+    "id": 0,
+    "insert": 0,
+    "update": 0,
+    "delete": 0,
+    "ddl": 0,
+    "unknown": 0,
+    "error": 0,
+    "insert_ns_top_3": [],
+    "update_ns_top_3": [],
+    "delete_ns_top_3": [],
+    "ddl_ns_top_3": [],
+    "unknown_ns_top_3": [],
+    "error_ns_top_3": []
+  }]
+end
+    cat > $MONITOR_ITEM_REPL <<end 
+{
+  "logs_get": 0,
+  "logs_repl": 0,
+  "logs_success": 0,
+  "tps": 0
+}
+end
+
+}
+initFullFile(){
+    cat > $MONITOR_ITEM_PROGRESS <<end 
+{
+  "progress": "0.00%",
+  "total_collection_number": 0,
+  "finished_collection_number": 0,
+  "processing_collection_number": 0,
+  "wait_collection_number": 0
+}
+end
 }
 
-getGid() {
-  echo $(echo $1 | cut -d'/' -f4)
+healthCheck(){
+    log ">>>>> healthCheck begin <<<<<"
+    if [ -f $BEING_HEALTH_CHECKED_FLAG ]; then 
+        log "a health check is already running!"
+        return 1
+    fi
+
+    if [ -f $IGNORE_HEALTH_CHECK_FLAG_FILE ]; then 
+        log "healthCheck has been ignored!"
+        return 0
+    fi
+
+    local source=$(getItemFromFile mongo_urls $MONGOSHAKE_CONF)
+    local dest=$(getItemFromFile tunnel.address $MONGOSHAKE_CONF)
+    if [ "$source" = "$dest" ]; then
+        log "source and destination are the same, skip healthCheck"
+        return 0
+    fi
+
+    touch $BEING_HEALTH_CHECKED_FLAG
+
+    local full_port=$(getItemFromFile full_sync.http_port $MONGOSHAKE_CONF)
+    local incr_port=$(getItemFromFile incr_sync.http_port $MONGOSHAKE_CONF)
+    if [ -z "$(getPidByNetstat $full_port)" ] && [ -z "$(getPidByNetstat $incr_port)" ] ; then
+        log "port not listen, please check!"
+        rm -f $BEING_HEALTH_CHECKED_FLAG
+        return $ERR_PORT_NOT_LISTEN
+    fi
+
+    if [ -z getPidByPs ]; then
+        log "mongoshake process not exist, please check!"
+        rm -f $BEING_HEALTH_CHECKED_FLAG
+        return $ERR_PROCESS_NOT_EXIST
+    fi
+    
+    rm -f $BEING_HEALTH_CHECKED_FLAG
+    log ">>>>> healthCheck end <<<<<"
+    return 0
 }
+
+revive() {
+    log ">>>>> revive begin <<<<<"
+    if [ -f $BEING_REVIVED_FLAG ]; then 
+        log "a revive process is already running!"
+        return 1
+    fi
+    touch $BEING_REVIVED_FLAG
+    local full_port=$(getItemFromFile full_sync.http_port $MONGOSHAKE_CONF)
+    local incr_port=$(getItemFromFile incr_sync.http_port $MONGOSHAKE_CONF)
+    if [ -z getPidByNetstat $full_port ] && [ -z getPidByNetstat $incr_port ] ; then
+        reload
+        rm -f $BEING_REVIVED_FLAG
+        return 0
+    fi
+
+    if [ -z getPidByPs ]; then
+        reload
+        rm -f $BEING_REVIVED_FLAG
+        return 0
+    fi
+    rm -f $BEING_REVIVED_FLAG
+    log ">>>>> revive end <<<<<"
+    return 0
+}
+
 
 getItemFromFile() {
-  local res=$(cat $2 | sed '/^'$1'=/!d;s/^'$1'=//')
-  echo "$res"
+    local res=$(cat $2 | sed '/^'$1'=/!d;s/^'$1'=//')
+    echo "$res"
 }
 
-# sortHostList
-# input
-#  $1-n: hosts array
-# output
-#  sorted array, like 'v1 v2 v3 ...'
-sortHostList() {
-  echo $@ | tr ' ' '\n' | sort
+getPidByNetstat() {
+    local pid=$(netstat -nultp | grep $1 | awk -F" "  '{print $7}' | awk -F"/" '{print $1}')
+    echo "$pid"
 }
 
-getInitNodeList() {
-  echo ${NODE_LIST[@]}
-}
-
-clearNodeFirstCreateFlag() {
-  if [ -f $NODE_FIRST_CREATE_FLAG_FILE ]; then rm -f $NODE_FIRST_CREATE_FLAG_FILE; fi
-}
-
-isNodeFirstCreate() {
-  test -f $NODE_FIRST_CREATE_FLAG_FILE
-}
-
-enableHealthCheck() {
-  touch $HEALTH_CHECK_FLAG_FILE
-}
-
-disableHealthCheck() {
-  rm -f $HEALTH_CHECK_FLAG_FILE
-}
-
-needHealthCheck() {
-  test -f $HEALTH_CHECK_FLAG_FILE
-}
-
-msGetHostDbVersion() {
-  local jsstr=$(cat <<EOF
-db.version()
-EOF
-  )
-  runMongoCmd "$jsstr" $@
-}
-
-msIsHostMaster() {
-  local hostinfo=$1
-  shift
-  local tmpstr=$(runMongoCmd "JSON.stringify(rs.status().members)" $@)
-  local state=$(echo $tmpstr | jq '.[] | select(.name=="'$hostinfo'") | .stateStr' | sed s/\"//g)
-  test "$state" = "PRIMARY"
-}
-
-isMeMaster() {
-  msIsHostMaster "$MY_IP:$MY_PORT" -P $MY_PORT -u $DB_QC_USER -p $(cat $DB_QC_LOCAL_PASS_FILE)
-}
-
-isMeNotMaster() {
-  ! msIsHostMaster "$MY_IP:$MY_PORT" -P $MY_PORT -u $DB_QC_USER -p $(cat $DB_QC_LOCAL_PASS_FILE)
-}
-
-msIsHostHidden() {
-  local hostinfo=$1
-  shift
-  local tmpstr=$(runMongoCmd "JSON.stringify(rs.conf().members)" $@)
-  local pname=$(echo $tmpstr | jq '.[] | select(.hidden==true) | .host' | sed s/\"//g)
-  log "hostinfo=$hostinfo, pname=$pname"
-  test "$pname" = "$hostinfo"
-}
-
-# msIsReplStatusOk
-# check if replia set's status is ok
-# 1 primary, other's secondary
-msIsReplStatusOk() {
-  local allcnt=$1
-  shift
-  local tmpstr=$(runMongoCmd "JSON.stringify(rs.status())" $@ | jq .members[].stateStr)
-  local pcnt=$(echo "$tmpstr" | grep PRIMARY | wc -l)
-  local scnt=$(echo "$tmpstr" | grep SECONDARY | wc -l)
-  test $pcnt -eq 1
-  test $((pcnt+scnt)) -eq $allcnt
-}
-
-msIsReplOther() {
-  local res=$(runMongoCmd "JSON.stringify(rs.status())" $@ | jq .ok)
-  if [ -z "$res" ] || [ $res -eq 0 ]; then return 0; fi
-  return 1
-}
-
-getNodesOrder() {
-  local tmpstr
-  local cnt
-  local subcnt
-  local tmplist
-  local tmpip
-  local curmaster
-  
-  tmplist=(${NODE_LIST[@]})
-  cnt=${#tmplist[@]}
-  for((i=0;i<$cnt;i++)); do
-    tmpip=$(getIp ${tmplist[i]})
-    if msIsHostMaster "$tmpip:$MY_PORT" -H $tmpip -P $MY_PORT -u $DB_QC_USER -p $(cat $DB_QC_LOCAL_PASS_FILE); then
-      curmaster=$(getNodeId ${tmplist[i]})
-      continue
-    fi
-    tmpstr="$tmpstr,$(getNodeId ${tmplist[i]})"
-  done
-  if [ -z "$tmpstr" ]; then
-    tmpstr="$curmaster"
-  else
-    tmpstr="${tmpstr:1},$curmaster"
-  fi
-  
-  log "$tmpstr"
-  echo $tmpstr
-}
-
-# sort nodes for changing configue
-# secodary node first, primary node last
-getRollingList() {
-  local cnt=${#NODE_LIST[@]}
-  local tmpstr
-  local master
-  local ip
-  for((i=0;i<$cnt;i++)); do
-    ip=$(getIp ${NODE_LIST[i]})
-    if msIsHostMaster "$ip:$MY_PORT" -H $ip -P $MY_PORT -u $DB_QC_USER -p $(cat $DB_QC_LOCAL_PASS_FILE); then
-      master=${NODE_LIST[i]}
-      continue
-    fi
-    tmpstr="$tmpstr ${NODE_LIST[i]}"
-  done
-  tmpstr="$tmpstr $master"
-  echo $tmpstr
-}
-
-getOperationProfilingModeCode() {
-  local res
-  case $1 in
-    "off") res=0;;
-    "slowOp") res=1;;
-    "all") res=2;;
-  esac
-  echo $res
-}
-
-msGetServerStatus() {
-  local tmpstr=$(runMongoCmd "JSON.stringify(db.serverStatus())" -P $MY_PORT -u $DB_QC_USER -p $(cat $DB_QC_LOCAL_PASS_FILE))
-  echo "$tmpstr"
-}
-
-isNetPortChanged() {
-  if isNodeFirstCreate; then return 1; fi
-  local tmpcnt
-  if ! diff $HOSTS_INFO_FILE $HOSTS_INFO_FILE.new; then
-    tmpcnt=$(diff $HOSTS_INFO_FILE $HOSTS_INFO_FILE.new | grep PORT | wc -l) || :
-    if (($tmpcnt > 0)); then return 0; fi
-  fi
-  return 1
-}
-
-createMongoConf() {
-  local replication_replSetName
-  local storage_engine
-  local net_port
-  local setParameter_cursorTimeoutMillis
-  local operationProfiling_mode
-  local operationProfiling_slowOpThresholdMs
-  local replication_enableMajorityReadConcern
-  local read_concern
-  
-  net_port=$(getItemFromFile PORT $HOSTS_INFO_FILE)
-  setParameter_cursorTimeoutMillis=$(getItemFromFile setParameter_cursorTimeoutMillis $CONF_INFO_FILE)
-  replication_replSetName=$(getItemFromFile replication_replSetName $CONF_INFO_FILE)
-  storage_engine=$(getItemFromFile storage_engine $CONF_INFO_FILE)
-  operationProfiling_mode=$(getItemFromFile operationProfiling_mode $CONF_INFO_FILE)
-  operationProfiling_slowOpThresholdMs=$(getItemFromFile operationProfiling_slowOpThresholdMs $CONF_INFO_FILE)
-  replication_enableMajorityReadConcern=$(getItemFromFile replication_enableMajorityReadConcern $CONF_INFO_FILE)
-  replication_oplogSizeMB=$(getItemFromFile replication_oplogSizeMB $CONF_INFO_FILE)
-  read_concern="enableMajorityReadConcern: $replication_enableMajorityReadConcern"
-  
-  cat > $MONGODB_CONF_PATH/mongo.conf <<MONGO_CONF
-systemLog:
-  destination: file
-  path: $MONGODB_LOG_PATH/mongo.log
-  logAppend: true
-  logRotate: reopen
-net:
-  port: $net_port
-  bindIp: 0.0.0.0
-security:
-  keyFile: $MONGODB_CONF_PATH/repl.key
-  authorization: enabled
-storage:
-  dbPath: $MONGODB_DATA_PATH
-  journal:
-    enabled: true
-  engine: $storage_engine
-operationProfiling:
-  mode: $operationProfiling_mode
-  slowOpThresholdMs: $operationProfiling_slowOpThresholdMs
-replication:
-  oplogSizeMB: $replication_oplogSizeMB
-  replSetName: $replication_replSetName
-  $read_concern
-setParameter:
-  cursorTimeoutMillis: $setParameter_cursorTimeoutMillis
-MONGO_CONF
-
-    cat > $MONGODB_CONF_PATH/mongo-admin.conf <<MONGO_CONF
-systemLog:
-  destination: syslog
-net:
-  port: $NET_MAINTAIN_PORT
-  bindIp: 0.0.0.0
-storage:
-  dbPath: $MONGODB_DATA_PATH
-  journal:
-    enabled: true
-  engine: $storage_engine
-processManagement:
-  fork: true
-MONGO_CONF
-}
-
-msForceStepDown() {
-  runMongoCmd "rs.stepDown()" $@ || :
+getPidByPs() {
+    local pid=$(ps aux | grep collector.linux | grep -v grep | awk -F" " '{print $2}')
+    echo "$pid"
 }
