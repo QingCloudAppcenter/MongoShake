@@ -227,7 +227,7 @@
               "key": "filter.pass.special.db",
               "label": "filter.pass.special.db",
               "description": "Specify a special namespace through, such as admin, system.views, mongoshake, config",
-              "default": "admin",
+              "default": "",
               "type": "string",
               "required": "no"
             },
