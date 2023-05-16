@@ -8,522 +8,82 @@
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
    "upgrading_policy": "parallel",
    "upgrade_policy": [
-        "appv-omli6gvn",
-        "appv-x5gq8om1",
-        "appv-7nc8ujnc",
-        "appv-fg61yxt0"
     ],
-   "nodes":[{
-        "role":"replica",
-        "container":{
-            "type":"kvm",
-            "sriov_nic": true,
-            "zone": "pek3",
-            "image": "img-q5xbism0"
-        },
-        "instance_class":{{cluster.replica.instance_class}},
-        "count":{{cluster.replica.count}},
-        "cpu":{{cluster.replica.cpu}},
-        "memory":{{cluster.replica.memory}},
-        "volume":{
-            "size":{{cluster.replica.volume_size}},
-            "class":{{cluster.replica.volume_class}},
-            "mount_point":"/data",
-            "filesystem":"ext4"
-        },
-        "passphraseless":"ssh-rsa",
-        "vertical_scaling_policy":"sequential",
-        "services":{
-            "init": {
-                "cmd": "appctl init",
-                "post_start_service": true
-            },
-            "start": {
-                "cmd": "appctl start"
-            },
-            "stop": {
-                "cmd": "appctl stop",
-                "timeout": 1800
-            },
-            "get_nodes_order": {
-                "event": ["upgrade", "rollback", "scale_vertical", "stop"],
-                "cmd": "appctl getNodesOrder"
-            },
-            "scale_out": {
-                "cmd": "appctl scaleOut"
-            },
-            "scale_in": {
-                "cmd": "appctl scaleIn",
-                "pre_check": "appctl scaleInPreCheck"
-            },
-            "change_vxnet": {
-                "pre_check": "appctl changeVxnetPreCheck"
-            },
-            "backup": {
-                "selector": "appctl getBackupNodeId",
-                "cmd": "appctl backup",
-                "cleanup": "appctl cleanup",
-                "timeout": 86400
-            },
-            "restore": {
-                "cmd": "appctl restore",
-                "timeout": 86400
-            },
-            "upgrade": {
-                "cmd": "appctl upgrade",
-                "timeout": 86400
-            },
-            "rollback": {
-                "cmd": "appctl rollback",
-                "timeout": 86400
-            },
-            "changeFcv": {
-                "type": "custom",
-                "cmd": "appctl changeFcv",
-                "service_params": {
-                    "fcv": {{service_params.fcv}}
-                }
-            }
-        },
-        "monitor":{
-            "enable": true,
-            "cmd": "appctl monitor",
-            "items": {
-                "op-insert": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "op-query": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "op-update": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "op-delete": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "op-getmore": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "op-command": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "opRepl-insert": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "opRepl-query": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "opRepl-update": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "opRepl-delete": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "opRepl-getmore": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "opRepl-command": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "connections-current": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "connections-totalCreated": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "connections-available": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "cursor-timedOut": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "cursor-open-noTimeout": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "cursor-open-pinned": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "cursor-open-total": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "network-bytesIn": {
-                    "unit": "MB",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "network-bytesOut": {
-                    "unit": "MB",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "WT-write-out": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "WT-write-available": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "WT-read-out": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "WT-read-available": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "repl-lag": {
-                    "unit": "minute",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 0.1
-                },
-                "conn-usage": {
-                    "unit": "%",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 0.1
-                },
-                "scanAndOrder": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "writeConflicts": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "wiredTiger-cache-usage": {
-                    "unit": "%",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 0.1
-                },
-                "wiredTiger-cache-dirty-usage": {
-                    "unit": "%",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 0.1
-                },
-                "doc-deleted": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "doc-inserted": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "doc-returned": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "doc-updated": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "scannedKeys": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "scannedDocs": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "deletedDocuments": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "passes": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "delta",
-                    "scale_factor_when_display": 1
-                },
-                "clients-total": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "clients-readers": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "clients-writers": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "queue-total": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "queue-readers": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                },
-                "queue-writers": {
-                    "unit": "",
-                    "value_type": "int",
-                    "statistics_type": "latest",
-                    "scale_factor_when_display": 1
-                }
-            },
-            "groups": {
-                "opcounters": [
-                    "op-insert",
-                    "op-query",
-                    "op-update",
-                    "op-delete",
-                    "op-getmore"
-                ],
-                "opcountersRepl": [
-                    "opRepl-insert",
-                    "opRepl-query",
-                    "opRepl-update",
-                    "opRepl-delete",
-                    "opRepl-getmore"
-                ],
-                "connections": [
-                    "connections-current",
-                    "connections-totalCreated",
-                    "connections-available"
-                ],
-                "metrics-cursor": [
-                    "cursor-timedOut",
-                    "cursor-open-noTimeout",
-                    "cursor-open-pinned",
-                    "cursor-open-total"
-                ],
-                "network": [
-                    "network-bytesIn",
-                    "network-bytesOut"
-                ],
-                                "wiredTiger-concurrentTransactions": [
-                    "WT-write-out",
-                    "WT-write-available",
-                    "WT-read-out",
-                    "WT-read-available"
-                ],
-                "metrics-operation": [
-                    "scanAndOrder",
-                    "writeConflicts"
-                ],
-                "wiredTiger-cache": [
-                    "wiredTiger-cache-usage",
-                    "wiredTiger-cache-dirty-usage"
-                ],
-                "metrics-document": [
-                    "doc-deleted",
-                    "doc-inserted",
-                    "doc-returned",
-                    "doc-updated"
-                ],
-                "metrics-queryExecutor": [
-                    "scannedKeys",
-                    "scannedDocs"
-                ],
-                "metrics-ttl": [
-                    "deletedDocuments",
-                    "passes"
-                ],
-                "globalLock-activeClients": [
-                    "clients-total",
-                    "clients-readers",
-                    "clients-writers"
-                ],
-                "globalLock-currentQueue": [
-                    "queue-total",
-                    "queue-readers",
-                    "queue-writers"
-                ]
-            },
-            "display": [
-                "opcounters",
-                "opcountersRepl",
-                "connections",
-                "metrics-cursor",
-                "network",
-                "wiredTiger-concurrentTransactions",
-                "repl-lag",
-                "conn-usage",
-                "metrics-operation",
-                "wiredTiger-cache",
-                "metrics-document",
-                "metrics-queryExecutor",
-                "metrics-ttl",
-                "globalLock-activeClients",
-                "globalLock-currentQueue"
-            ],
-            "alarm": [
-                "connections-current",
-                "connections-available",
-                "conn-usage"
-            ]
-        }
-   }],
+
+  "nodes": [{
+    "container": {
+      "type": "kvm",
+      "sriov_nic": true,
+      "zone": "pek3",
+      "image": "img-2x1dc02p"
+    },
+    "instance_class": {{cluster.replica.instance_class}},
+    "count": 1,
+    "cpu": {{cluster.replica.cpu}},
+    "memory": {{cluster.replica.memory}},
+    "services": {
+      "start": {
+        "cmd": "appctl start"
+      },
+      "stop": {
+        "cmd": "appctl stop"
+      }
+    }
+  }],
+
    "env": {
-        "conf.net.port": {{env.conf.net.port}},
-        "conf.userPass": {{env.conf.userPass}},
-        "conf.monitor.userPass": {{env.conf.monitor.userPass}},
-        "conf.storage.engine": {{env.conf.storage.engine}},
-        "conf.zabbix.server.addr": {{env.conf.zabbix.server.addr}},
-        "conf.zabbix.agent.port": {{env.conf.zabbix.agent.port}},
-        "conf.zabbix.agent.enabled": {{env.conf.zabbix.agent.enabled}},
-        "conf.node.exporter.enabled": {{env.conf.node.exporter.enabled}},
-        "conf.node.exporter.port": {{env.conf.node.exporter.port}},
-        "conf.mongodb.exporter.enabled": {{env.conf.mongodb.exporter.enabled}},
-        "conf.mongodb.exporter.port": {{env.conf.mongodb.exporter.port}},
+        "global.full_sync_port": {{env.global.full_sync_port}},
+        "global.incr_sync_port": {{env.global.incr_sync_port}},
+        "global.system_profile_port": {{env.global.system_profile_port}},
+        "global.log.level": {{env.global.log.level}},
+        "global.master_quorum": {{env.global.master_quorum}},
+        "global.sync_mode": {{env.global.sync_mode}},
+        "global.source.address": {{env.global.source.address}},
+        "global.source.user": {{env.global.source.user}},
+        "global.source.password": {{env.global.source.password}},
+        "global.destination.address": {{env.global.destination.address}},
+        "global.destination.user": {{env.global.destination.user}},
+        "global.destination.password": {{env.global.destination.password}},
+        "global.tunnel": {{env.global.tunnel}},
+        "global.mongo_connect_mode": {{env.global.mongo_connect_mode}},
+        "global.filter.namespace.black": {{env.global.filter.namespace.black}},
+        "global.filter.namespace.white": {{env.global.filter.namespace.white}},
+        "global.filter.pass.special.db": {{env.global.filter.pass.special.db}},
+        "global.filter.ddl_enable": {{env.global.filter.ddl_enable}},
+        "global.checkpoint.storage.url": {{env.global.checkpoint.storage.url}},
+        "global.checkpoint.storage.db": {{env.global.checkpoint.storage.db}},
+        "global.checkpoint.storage.collection": {{env.global.checkpoint.storage.collection}},
+        "global.checkpoint.start_position": {{env.global.checkpoint.start_position}},
+        "global.transform.namespace": {{env.global.transform.namespace}},
 
-        "conf.mongoshake.enabled": {{env.conf.mongoshake.enabled}},    
-        "conf.mongoshake.source": {{env.conf.mongoshake.source}},
-        "conf.mongoshake.source.user": {{env.conf.mongoshake.source.user}},
-        "conf.mongoshake.source.password": {{env.conf.mongoshake.source.password}},
-        "conf.mongoshake.destination": {{env.conf.mongoshake.destination}},
-        "conf.mongoshake.destination.user": {{env.conf.mongoshake.destination.user}},
-        "conf.mongoshake.destination.password": {{env.conf.mongoshake.destination.password}},
-        "conf.mongoshake.type": {{env.conf.mongoshake.type}},
-
-        "conf.caddy.user": {{env.conf.caddy.user}},
-        "conf.caddy.password": {{env.conf.caddy.password}},
-        "conf.caddy.enabled": {{env.conf.caddy.enabled}},
+        "full_sync.reader.collection_parallel": {{env.full_sync.reader.collection_parallel}},
+        "full_sync.reader.write_document_parallel": {{env.full_sync.reader.write_document_parallel}},
+        "full_sync.collection_exist_drop": {{env.full_sync.collection_exist_drop}},
+        "full_sync.create_index": {{env.full_sync.create_index}},
+        "full_sync.executor.insert_on_dup_update": {{env.full_sync.executor.insert_on_dup_update}},
+        "full_sync.executor.majority_enable": {{env.full_sync.executor.majority_enable}},
         
-        "replica.conf.setParameter.cursorTimeoutMillis": {{env.replica.conf.setParameter.cursorTimeoutMillis}},
-        "replica.conf.operationProfiling.mode": {{env.replica.conf.operationProfiling.mode}},
-        "replica.conf.operationProfiling.slowOpThresholdMs": {{env.replica.conf.operationProfiling.slowOpThresholdMs}},
-        "replica.conf.replication.enableMajorityReadConcern": {{env.replica.conf.replication.enableMajorityReadConcern}},
-        "replica.conf.replication.oplogSizeMB": {{env.replica.conf.replication.oplogSizeMB}}
-   },
-   "advanced_services": {
-        "update_nodes_names": {
-            "cmd": "/opt/mongodb/bin/mongo-trib.py get_nodes_names",
-            "timeout": 10
-        }
-   },
-   "display_tabs": {
-        "FCV": {
-            "cmd": "appctl showFcv",
-            "description": "Feature compatibility version, can be changed through 'changeFcv' menu, please refer to [official documents](https://docs.mongodb.com/v3.6/reference/command/setFeatureCompatibilityVersion/) to get more information.<br/>Caution1: if you use 3.6 features in your database configuration, you can't downgrade to fcv 3.4 anymore!<br/>Caution2: if you upgrade your cluster from 3.4 to current version, fcv remains 3.4. Please test your server&client thoroughly before changing fcv to 3.6!"
-        },
-        "Node Status": {
-            "cmd": "appctl showNodeStatus",
-            "description": "Nodes' status"
-        },
-        "Connection String": {
-            "cmd": "appctl showConnStr",
-            "description": "Connection string"
-        }
+        "incr_sync.mongo_fetch_method": {{env.incr_sync.mongo_fetch_method}},
+        "incr_sync.worker": {{env.incr_sync.worker}},
+        "incr_sync.tunnel.write_thread": {{env.incr_sync.tunnel.write_thread}},
+        "incr_sync.target_delay": {{env.incr_sync.target_delay}},
+       
+        "direct_tunnel.incr_sync.executor.upsert": {{env.direct_tunnel.incr_sync.executor.upsert}},
+        "direct_tunnel.incr_sync.executor.insert_on_dup_update": {{env.direct_tunnel.incr_sync.executor.insert_on_dup_update}},
+        "direct_tunnel.incr_sync.conflict_write_to": {{env.direct_tunnel.incr_sync.conflict_write_to}},
+        "direct_tunnel.incr_sync.majority_enable": {{env.direct_tunnel.incr_sync.majority_enable}}
    },
    "endpoints": {
-        "MongoDB": {
-            "port": {{env.conf.net.port}},
+        "Full Sync Port": {
+            "port": {{env.global.full_sync_port}},
             "protocol": "TCP"
         },
-        "Zabbix Agent2": {
-            "port": {{env.conf.zabbix.agent.port}},
+        "Incr Sync Port": {
+            "port": {{env.global.incr_sync_port}},
             "protocol": "TCP"
         },
-        "Node Exporter": {
-            "port": {{env.conf.node.exporter.port}},
-            "protocol": "TCP"
-        },
-        "MongoDB Exporter": {
-            "port": {{env.conf.mongodb.exporter.port}},
-            "protocol": "TCP"
-        },
-        "Caddy": {
-            "port": 8000,
+        "System Profile Port": {
+            "port": {{env.global.system_profile_port}},
             "protocol": "TCP"
         }
    },
@@ -536,5 +96,134 @@
         "unhealthy_threshold": 2,
         "check_cmd": "appctl healthCheck",
         "action_cmd": "appctl revive"
-   }
+   },
+
+  "monitor":{
+    "enable":true,
+    "cmd":"appctl monitor",
+    "items": {
+      "tps":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "logs_get":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "logs_repl":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "logs_success":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "insert":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "update":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "delete":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "ddl":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "unknow":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "error":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "progress":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "total_collection_number":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "finished_collection_number":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "processing_collection_number":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      },
+      "wait_collection_number":{
+        "unit":"",
+        "value_type":"int",
+        "statistics_type":"latest",
+        "scale_factor_when_display":1
+      }
+    },
+    "groups": {
+      "logs":[
+        "logs_get",
+        "logs_repl",
+        "logs_success"
+      ],
+      "executor_exception": [
+        "unknow",
+        "error"
+      ],
+      "executor_crud": [
+        "insert",
+        "update",
+        "delete",
+        "ddl"
+      ],
+      "collection_progress":[
+        "total_collection_number",
+        "finished_collection_number",
+        "processing_collection_number",
+        "wait_collection_number"
+      ]
+    },
+    "display": [
+      "progress",
+      "collection_progress",
+      "tps",
+      "logs",
+      "executor_crud",
+      "executor_exception"
+    ],
+    "alarm": []
+  }
 }
