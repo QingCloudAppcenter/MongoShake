@@ -93,8 +93,8 @@
             {
               "key": "sync_mode",
               "label": "sync_mode",
-              "description": "Sync mode, default full + incr",
-              "default": "all",
+              "description": "Sync mode, default incr",
+              "default": "incr",
               "type": "string",
               "range": [
                 "all",
@@ -116,7 +116,7 @@
               "label": "Sync: source user of MongoDB",
               "description": "Source's user",
               "type": "string",
-              "default": "root",
+              "default": "qc_master",
               "required": "yes"
             },
             {
@@ -125,7 +125,7 @@
               "description": "Must contain a combination of uppercase and lowercase letters and numbers, special characters can be used (including @#%&*()_+-=), and the length is between 8-32",
               "type": "password",
               "pattern": "^(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z@#\\%\\&\\*\\(\\)\\_\\+\\-\\=]{8,32}$",
-              "default": "Change1Pwd",
+              "default": "YXBwLW8xcmw3MWVu",
               "required": "yes"
             },
             {
@@ -141,7 +141,7 @@
               "label": "Sync: destination user of MongoDB",
               "description": "Destination's user",
               "type": "string",
-              "default": "root",
+              "default": "qc_master",
               "required": "yes"
             },
             {
@@ -150,7 +150,7 @@
               "description": "Must contain a combination of uppercase and lowercase letters and numbers, special characters can be used (including @#%&*()_+-=), and the length is between 8-32",
               "type": "password",
               "pattern": "^(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z@#\\%\\&\\*\\(\\)\\_\\+\\-\\=]{8,32}$",
-              "default": "Change1Pwd",
+              "default": "YXBwLW8xcmw3MWVu",
               "required": "yes"
             },
             {
@@ -227,7 +227,7 @@
               "key": "filter.pass.special.db",
               "label": "filter.pass.special.db",
               "description": "Specify a special namespace through, such as admin, system.views, mongoshake, config",
-              "default": "",
+              "default": "admin",
               "type": "string",
               "required": "no"
             },
@@ -235,7 +235,7 @@
               "key": "filter.ddl_enable",
               "label": "filter.ddl_enable",
               "description": "Whether to synchronize DDL",
-              "default": "false",
+              "default": "true",
               "range": ["true", "false"],
               "type": "string",
               "required": "no"

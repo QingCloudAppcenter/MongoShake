@@ -35,7 +35,7 @@
   "Increment stage listening port, default 9100":"增量阶段监听的端口,默认 9100",
   "pprof listening port, Users can view internal running stack information. default 9200":"Profile 端口,可以用户查看内部运行堆栈信息.默认 9200",
   "Log level, 【debug, info, warning, error】, default info":"日志的级别,【debug, info, warning, error】,默认 info",
-  "Sync mode, default full + incr":"同步模式,全量:full,增量:incr,全量+增量:all(默认)",
+  "Sync mode, default incr":"同步模式,全量:full,增量:incr(默认),全量+增量:all",
   "Source address, Format: ip:port, for example: 1.1.1.1:27017":"源地址,格式:ip:port,例如:1.1.1.1:27017",
   "Source's user":"源端用户",
   "Destination address, Format: ip:port, for example: 1.1.1.1:27017":"目的地址,格式:ip:port,例如:1.1.1.1:27017",
